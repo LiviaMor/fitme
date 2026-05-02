@@ -31,7 +31,6 @@ export function Scanner360() {
   const [step, setStep] = useState(0);
   const [cameraOn, setCameraOn] = useState(false);
   const [captures, setCaptures] = useState<string[]>([]);
-  const [blobs, setBlobs] = useState<Blob[]>([]);
   const [heightCm, setHeightCm] = useState(170);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +38,11 @@ export function Scanner360() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  // Refs para valores atuais (evita stale closures no toBlob callback)
+  const capturesRef = useRef<string[]>([]);
+  const blobsRef = useRef<Blob[]>([]);
+  const stepRef = useRef(0);
 
   // Try-on state
   const [garmentUrl, setGarmentUrl] = useState("");
@@ -80,40 +84,39 @@ export function Scanner360() {
       return;
     }
 
-    // Verificar se o vídeo tem conteúdo
     if (video.readyState < 2 || video.videoWidth === 0) {
-      setError(`Vídeo não pronto (readyState=${video.readyState}, width=${video.videoWidth}). Aguarde.`);
+      setError("Vídeo não pronto. Aguarde a câmera carregar.");
       return;
     }
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      setError("Não foi possível obter contexto do canvas.");
-      return;
-    }
+    if (!ctx) return;
 
     ctx.drawImage(video, 0, 0);
 
-    // Salvar preview como data URL
     const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
 
-    // Converter canvas para blob
     canvas.toBlob(
       (blob) => {
         if (!blob) {
-          setError("Falha ao converter frame para blob.");
+          setError("Falha ao capturar frame.");
           return;
         }
 
-        // Atualizar state de uma vez
-        const newCaptures = [...captures, dataUrl];
-        const newBlobs = [...blobs, blob];
-        const newStep = step + 1;
+        // Usar refs para valores atuais
+        const newCaptures = [...capturesRef.current, dataUrl];
+        const newBlobs = [...blobsRef.current, blob];
+        const newStep = stepRef.current + 1;
 
+        // Atualizar refs
+        capturesRef.current = newCaptures;
+        blobsRef.current = newBlobs;
+        stepRef.current = newStep;
+
+        // Atualizar state (para re-render)
         setCaptures(newCaptures);
-        setBlobs(newBlobs);
         setStep(newStep);
 
         // Se completou 4 fotos, enviar
@@ -158,8 +161,10 @@ export function Scanner360() {
   const reset = () => {
     closeCamera();
     setStep(0);
+    stepRef.current = 0;
     setCaptures([]);
-    setBlobs([]);
+    capturesRef.current = [];
+    blobsRef.current = [];
     setResult(null);
     setError(null);
     setProcessing(false);
@@ -169,14 +174,14 @@ export function Scanner360() {
 
   // Try-on: usa a primeira foto (frontal) + URL da roupa
   const doTryOn = async () => {
-    if (!blobs[0] || !garmentUrl) return;
+    if (!blobsRef.current[0] || !garmentUrl) return;
     setTryonLoading(true);
     setError(null);
     setTryonResult(null);
 
     try {
       const formData = new FormData();
-      formData.append("photo", blobs[0], "front.jpg");
+      formData.append("photo", blobsRef.current[0], "front.jpg");
       formData.append("garment_url", garmentUrl);
       formData.append("garment_type", garmentType);
       formData.append("opacity", "0.85");
