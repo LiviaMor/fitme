@@ -393,80 +393,46 @@ export function Scanner360() {
                   </div>
                 )}
 
-                {/* Silhueta guia (quando câmera ligada) */}
+                {/* Overlay quando câmera ligada: só régua, sem silhueta */}
                 {cameraOn && (
                   <>
-                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                      <svg viewBox="0 0 100 170" className="h-[85%] opacity-40" fill="none" stroke="rgba(168,85,247,0.8)" strokeWidth="0.6" strokeDasharray="3 2">
-                        {/* Cabeça */}
-                        <ellipse cx="50" cy="12" rx="8" ry="10" />
-                        {/* Pescoço */}
-                        <line x1="50" y1="22" x2="50" y2="28" />
-                        {/* Ombros */}
-                        <line x1="30" y1="32" x2="70" y2="32" />
-                        {/* Tronco */}
-                        <line x1="30" y1="32" x2="33" y2="70" />
-                        <line x1="70" y1="32" x2="67" y2="70" />
-                        {/* Cintura */}
-                        <line x1="35" y1="55" x2="65" y2="55" strokeDasharray="2 2" />
-                        {/* Quadril */}
-                        <line x1="33" y1="70" x2="67" y2="70" />
-                        {/* Pernas */}
-                        <line x1="37" y1="70" x2="38" y2="140" />
-                        <line x1="63" y1="70" x2="62" y2="140" />
-                        {/* Braços */}
-                        <line x1="30" y1="32" x2="22" y2="75" />
-                        <line x1="70" y1="32" x2="78" y2="75" />
-                        {/* Pés */}
-                        <line x1="35" y1="140" x2="42" y2="140" />
-                        <line x1="58" y1="140" x2="65" y2="140" />
-                      </svg>
-                    </div>
+                    {/* Estadiômetro - régua vertical na direita */}
+                    <div className="absolute right-0 top-0 bottom-0 w-10 pointer-events-none"
+                         style={{ background: "linear-gradient(to right, transparent, rgba(0,0,0,0.4))" }}>
+                      {/* Barra vertical da régua */}
+                      <div className="absolute right-3 top-[3%] bottom-[3%] w-px bg-green-400/80" />
 
-                    {/* Estadiômetro / Régua lateral direita */}
-                    <div className="absolute right-1 top-[5%] bottom-[5%] w-8 pointer-events-none">
-                      {/* Régua: 0cm na base (pés), cresce para cima */}
-                      {[0, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200].map((cm) => {
-                        // Posição: 0cm = bottom (95%), 200cm = top (5%)
-                        const pct = 95 - (cm / 200) * 90;
+                      {/* Marcas de cm: 0 embaixo, 200 em cima */}
+                      {Array.from({ length: 21 }, (_, i) => i * 10).map((cm) => {
+                        const pct = 97 - (cm / 200) * 94;
                         const isMajor = cm % 50 === 0;
+                        const isMid = cm % 10 === 0 && !isMajor;
                         return (
-                          <div
-                            key={cm}
-                            className="absolute right-0 flex items-center"
-                            style={{ top: `${pct}%` }}
-                          >
+                          <div key={cm} className="absolute right-3 flex items-center" style={{ top: `${pct}%` }}>
+                            <div className={`h-px ${isMajor ? "w-4 bg-green-400" : isMid ? "w-2 bg-green-400/60" : "w-1 bg-green-400/30"}`} />
                             {isMajor && (
-                              <span className="text-[9px] text-green-400 font-mono mr-1">{cm}</span>
+                              <span className="text-[8px] text-green-300 font-mono ml-0.5 leading-none">{cm}</span>
                             )}
-                            <div className={`h-px ${isMajor ? "w-5 bg-green-400" : "w-3 bg-green-400/50"}`} />
                           </div>
                         );
                       })}
-                    </div>
 
-                    {/* Linha de altura do usuário (amarela) */}
-                    {(() => {
-                      const heightPct = 95 - (heightCm / 200) * 90;
-                      return (
-                        <>
-                          <div
-                            className="absolute left-0 right-0 pointer-events-none"
-                            style={{ top: `${heightPct}%` }}
-                          >
-                            <div className="h-px bg-yellow-400 w-full" />
-                          </div>
-                          <div
-                            className="absolute left-2 pointer-events-none"
-                            style={{ top: `${heightPct - 2}%` }}
-                          >
-                            <span className="text-[10px] text-yellow-400 font-mono font-bold bg-black/40 px-1 rounded">
-                              ← {heightCm}cm
+                      {/* Marca da altura do usuário */}
+                      {(() => {
+                        const pct = 97 - (heightCm / 200) * 94;
+                        return (
+                          <div className="absolute left-0 right-0" style={{ top: `${pct}%` }}>
+                            <div className="h-0.5 bg-yellow-400 w-full" />
+                            <span className="absolute left-0 -top-3 text-[9px] text-yellow-300 font-mono font-bold bg-black/60 px-1 rounded">
+                              {heightCm}cm
                             </span>
                           </div>
-                        </>
-                      );
-                    })()}
+                        );
+                      })()}
+                    </div>
+
+                    {/* Linha central vertical (guia de posição) */}
+                    <div className="absolute left-1/2 top-[5%] bottom-[5%] w-px bg-white/15 pointer-events-none" />
 
                     {/* Instrução */}
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-6 text-center">
