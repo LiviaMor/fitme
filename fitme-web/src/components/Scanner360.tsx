@@ -40,6 +40,12 @@ export function Scanner360() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  // Try-on state
+  const [garmentUrl, setGarmentUrl] = useState("");
+  const [garmentType, setGarmentType] = useState("camiseta");
+  const [tryonResult, setTryonResult] = useState<string | null>(null);
+  const [tryonLoading, setTryonLoading] = useState(false);
+
   // Abrir câmera
   const openCamera = async () => {
     setError(null);
@@ -69,39 +75,56 @@ export function Scanner360() {
   const capture = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas || video.videoWidth === 0) {
-      setError("Câmera não pronta. Aguarde o vídeo aparecer.");
+    if (!video || !canvas) {
+      setError("Elementos de vídeo/canvas não encontrados.");
+      return;
+    }
+
+    // Verificar se o vídeo tem conteúdo
+    if (video.readyState < 2 || video.videoWidth === 0) {
+      setError(`Vídeo não pronto (readyState=${video.readyState}, width=${video.videoWidth}). Aguarde.`);
       return;
     }
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d")!;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      setError("Não foi possível obter contexto do canvas.");
+      return;
+    }
+
     ctx.drawImage(video, 0, 0);
 
-    // Salvar preview
+    // Salvar preview como data URL
     const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-    setCaptures((prev) => [...prev, dataUrl]);
 
-    // Salvar blob para envio
+    // Converter canvas para blob
     canvas.toBlob(
       (blob) => {
-        if (blob) {
-          setBlobs((prev) => {
-            const newBlobs = [...prev, blob];
-            if (newBlobs.length >= 4) {
-              closeCamera();
-              sendToAPI(newBlobs);
-            }
-            return newBlobs;
-          });
+        if (!blob) {
+          setError("Falha ao converter frame para blob.");
+          return;
+        }
+
+        // Atualizar state de uma vez
+        const newCaptures = [...captures, dataUrl];
+        const newBlobs = [...blobs, blob];
+        const newStep = step + 1;
+
+        setCaptures(newCaptures);
+        setBlobs(newBlobs);
+        setStep(newStep);
+
+        // Se completou 4 fotos, enviar
+        if (newBlobs.length >= 4) {
+          closeCamera();
+          sendToAPI(newBlobs);
         }
       },
       "image/jpeg",
       0.9
     );
-
-    setStep((s) => s + 1);
   };
 
   // Enviar para API
@@ -140,6 +163,41 @@ export function Scanner360() {
     setResult(null);
     setError(null);
     setProcessing(false);
+    setTryonResult(null);
+    setGarmentUrl("");
+  };
+
+  // Try-on: usa a primeira foto (frontal) + URL da roupa
+  const doTryOn = async () => {
+    if (!blobs[0] || !garmentUrl) return;
+    setTryonLoading(true);
+    setError(null);
+    setTryonResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("photo", blobs[0], "front.jpg");
+      formData.append("garment_url", garmentUrl);
+      formData.append("garment_type", garmentType);
+      formData.append("opacity", "0.85");
+
+      const res = await fetch(`${API_URL}/api/v1/tryon/url/base64`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setTryonResult(`data:image/png;base64,${data.image_base64}`);
+      } else {
+        const err = await res.json();
+        setError(err.detail || "Erro no try-on.");
+      }
+    } catch {
+      setError("API não disponível para try-on.");
+    } finally {
+      setTryonLoading(false);
+    }
   };
 
   // Cleanup
@@ -192,6 +250,81 @@ export function Scanner360() {
             <button onClick={reset} className="mt-4 w-full py-2 border rounded-lg text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2">
               <RotateCcw size={16} /> Refazer
             </button>
+
+            {/* Try-On após medidas */}
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                👗 Experimentar uma roupa
+              </h3>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                {/* Input da roupa */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm text-gray-600 block mb-1">URL da imagem da roupa</label>
+                    <input
+                      type="url"
+                      value={garmentUrl}
+                      onChange={(e) => { setGarmentUrl(e.target.value); setTryonResult(null); }}
+                      placeholder="https://loja.com/camisa.jpg"
+                      className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-600 block mb-1">Tipo de peça</label>
+                    <select
+                      value={garmentType}
+                      onChange={(e) => setGarmentType(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      {[
+                        ["camiseta", "Camiseta"], ["camisa", "Camisa"], ["vestido", "Vestido"],
+                        ["calca", "Calça"], ["saia", "Saia"], ["blazer", "Blazer"], ["jaqueta", "Jaqueta"],
+                      ].map(([val, label]) => (
+                        <option key={val} value={val}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {garmentUrl && (
+                    <div className="border rounded-lg p-2 bg-white">
+                      <img
+                        src={garmentUrl}
+                        alt="Roupa"
+                        className="max-h-32 mx-auto object-contain rounded"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    </div>
+                  )}
+
+                  <button
+                    onClick={doTryOn}
+                    disabled={!garmentUrl || tryonLoading}
+                    className="w-full py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 disabled:opacity-50 transition flex items-center justify-center gap-2"
+                  >
+                    {tryonLoading ? (
+                      <><Loader2 size={18} className="animate-spin" /> Vestindo...</>
+                    ) : (
+                      "👗 Experimentar"
+                    )}
+                  </button>
+                </div>
+
+                {/* Resultado try-on */}
+                <div className="bg-white border rounded-xl p-3 min-h-[200px] flex items-center justify-center">
+                  {tryonResult ? (
+                    <img src={tryonResult} alt="Try-on" className="max-h-80 rounded-lg object-contain" />
+                  ) : captures[0] ? (
+                    <div className="text-center">
+                      <img src={captures[0]} alt="Sua foto" className="max-h-48 rounded-lg object-contain mx-auto mb-2 opacity-50" />
+                      <p className="text-xs text-gray-400">Cole o link da roupa e clique Experimentar</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400">Resultado aparecerá aqui</p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
