@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "postgresql+asyncpg://fitme:fitme_secret@localhost:5432/fitme"
 
+    # Replicate (IDM-VTON)
+    replicate_api_token: str = ""
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

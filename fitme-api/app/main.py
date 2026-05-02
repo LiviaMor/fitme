@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 import traceback
 
 from app.config import settings
-from app.routers import analysis, health, garments, stadiometer, tryon, scan360, vectors, scan360_multi, stylist
+from app.routers import analysis, health, garments, stadiometer, tryon, scan360, vectors, scan360_multi, stylist, tryon_ai
 
 app = FastAPI(
     title=settings.app_name,
@@ -58,3 +58,4 @@ app.include_router(scan360.router, prefix="/api/v1", tags=["Scanner 360°"])
 app.include_router(vectors.router, prefix="/api/v1", tags=["Vetores & Similaridade"])
 app.include_router(scan360_multi.router, prefix="/api/v1", tags=["Scanner 360° Multi-Frame"])
 app.include_router(stylist.router, prefix="/api/v1", tags=["Personal Stylist"])
+app.include_router(tryon_ai.router, prefix="/api/v1", tags=["Try-On IA (IDM-VTON)"])
