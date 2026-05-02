@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: List[str] = ["http://localhost:3000", "http://localhost:8501"]
 
+    # Database
+    database_url: str = "postgresql+asyncpg://fitme:fitme_secret@localhost:5432/fitme"
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

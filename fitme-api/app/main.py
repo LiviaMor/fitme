@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 import traceback
 
 from app.config import settings
-from app.routers import analysis, health, garments, stadiometer, tryon, scan360
+from app.routers import analysis, health, garments, stadiometer, tryon, scan360, vectors
 
 app = FastAPI(
     title=settings.app_name,
@@ -39,6 +39,14 @@ async def startup_event():
     print(f"🚀 {settings.app_name} v{settings.app_version} iniciando...")
     print(f"📍 Ambiente: {settings.app_env}")
 
+    # Inicializar banco (cria tabelas + extensão pgvector)
+    try:
+        from app.database import init_db
+        await init_db()
+        print("🗄️  Banco de dados inicializado (pgvector)")
+    except Exception as e:
+        print(f"⚠️  Banco não disponível (rode sem pgvector): {e}")
+
 
 # Routers
 app.include_router(health.router, tags=["Health"])
@@ -47,3 +55,4 @@ app.include_router(garments.router, prefix="/api/v1", tags=["Peças de Roupa"])
 app.include_router(stadiometer.router, prefix="/api/v1", tags=["Estadiômetro Digital"])
 app.include_router(tryon.router, prefix="/api/v1", tags=["Virtual Try-On"])
 app.include_router(scan360.router, prefix="/api/v1", tags=["Scanner 360°"])
+app.include_router(vectors.router, prefix="/api/v1", tags=["Vetores & Similaridade"])
