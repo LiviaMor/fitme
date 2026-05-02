@@ -113,17 +113,21 @@ class VirtualTryOn:
         right_ankle = landmarks[28]
 
         if garment_type in ("camiseta", "camisa", "blazer", "jaqueta"):
-            # Região: ombros até quadril
-            x1 = int(min(left_shoulder.x, right_shoulder.x) * w) - 20
-            y1 = int(min(left_shoulder.y, right_shoulder.y) * h) - 10
-            x2 = int(max(left_shoulder.x, right_shoulder.x) * w) + 20
-            y2 = int(max(left_hip.y, right_hip.y) * h) + 10
+            # Região: além dos ombros (incluir mangas) até abaixo do quadril
+            shoulder_width = abs(right_shoulder.x - left_shoulder.x) * w
+            extra_w = int(shoulder_width * 0.35)  # Espaço para mangas
+            x1 = int(min(left_shoulder.x, right_shoulder.x) * w) - extra_w
+            y1 = int(min(left_shoulder.y, right_shoulder.y) * h) - 15
+            x2 = int(max(left_shoulder.x, right_shoulder.x) * w) + extra_w
+            y2 = int(max(left_hip.y, right_hip.y) * h) + 20
 
         elif garment_type in ("vestido", "saia"):
-            # Região: ombros/cintura até joelhos/tornozelos
-            x1 = int(min(left_shoulder.x, right_shoulder.x) * w) - 20
-            y1 = int(min(left_shoulder.y, right_shoulder.y) * h) - 10
-            x2 = int(max(left_hip.x, right_hip.x) * w) + 20
+            # Região: ombros/cintura até tornozelos, com largura extra
+            shoulder_width = abs(right_shoulder.x - left_shoulder.x) * w
+            extra_w = int(shoulder_width * 0.3)
+            x1 = int(min(left_shoulder.x, right_shoulder.x) * w) - extra_w
+            y1 = int(min(left_shoulder.y, right_shoulder.y) * h) - 15
+            x2 = int(max(left_hip.x, right_hip.x) * w) + extra_w
             y2 = int(max(left_ankle.y, right_ankle.y) * h)
 
         elif garment_type == "calca":
@@ -257,25 +261,10 @@ class VirtualTryOn:
         if region_w < 10 or region_h < 10:
             return None
 
-        # Expandir a região para a roupa ficar mais natural
-        padding_x = int(region_w * 0.15)
-        padding_y = int(region_h * 0.05)
-        x = max(0, x - padding_x)
+        # Pequeno padding vertical para naturalidade
+        padding_y = int(region_h * 0.03)
         y = max(0, y - padding_y)
-        region_w = min(w - x, region_w + padding_x * 2)
         region_h = min(h - y, region_h + padding_y * 2)
-
-        # Verificar se a roupa precisa ser espelhada.
-        # No MediaPipe, landmark 11 = ombro esquerdo, 12 = ombro direito.
-        # Se o ombro esquerdo (11) está à DIREITA na imagem (x maior),
-        # significa que a pessoa está de frente e a imagem não está espelhada.
-        # Imagens de roupa de e-commerce são "vistas de frente" (como num cabide),
-        # então precisam ser espelhadas para alinhar com o corpo na foto.
-        left_shoulder_x = landmarks[11].x
-        right_shoulder_x = landmarks[12].x
-        if left_shoulder_x > right_shoulder_x:
-            # Pessoa de frente (não espelhada) - espelhar a roupa
-            garment_bgra = cv2.flip(garment_bgra, 1)
 
         # Rotacionar roupa se ombros não estão nivelados
         if abs(angle) > 2:
