@@ -398,46 +398,85 @@ export function Scanner360() {
                   </div>
                 )}
 
-                {/* Overlay quando câmera ligada: só régua, sem silhueta */}
+                {/* Overlay: grade quadriculada + estadiômetro */}
                 {cameraOn && (
                   <>
-                    {/* Estadiômetro - régua vertical na direita */}
-                    <div className="absolute right-0 top-0 bottom-0 w-10 pointer-events-none"
-                         style={{ background: "linear-gradient(to right, transparent, rgba(0,0,0,0.4))" }}>
-                      {/* Barra vertical da régua */}
-                      <div className="absolute right-3 top-[3%] bottom-[3%] w-px bg-green-400/80" />
-
-                      {/* Marcas de cm: 0 embaixo, 200 em cima */}
-                      {Array.from({ length: 21 }, (_, i) => i * 10).map((cm) => {
-                        const pct = 97 - (cm / 200) * 94;
+                    {/* Grade quadriculada - 10cm cada quadrado, 0-200cm */}
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
+                      {/* Linhas horizontais a cada 10cm (20 divisões para 200cm) */}
+                      {Array.from({ length: 21 }, (_, i) => {
+                        const y = 3 + (i / 20) * 94; // 3% top margin, 94% usable
+                        const cm = 200 - i * 10;
                         const isMajor = cm % 50 === 0;
-                        const isMid = cm % 10 === 0 && !isMajor;
                         return (
-                          <div key={cm} className="absolute right-3 flex items-center" style={{ top: `${pct}%` }}>
-                            <div className={`h-px ${isMajor ? "w-4 bg-green-400" : isMid ? "w-2 bg-green-400/60" : "w-1 bg-green-400/30"}`} />
-                            {isMajor && (
-                              <span className="text-[8px] text-green-300 font-mono ml-0.5 leading-none">{cm}</span>
-                            )}
-                          </div>
+                          <line
+                            key={`h${i}`}
+                            x1="0%" y1={`${y}%`}
+                            x2="100%" y2={`${y}%`}
+                            stroke={isMajor ? "rgba(0,255,100,0.35)" : "rgba(0,255,100,0.12)"}
+                            strokeWidth={isMajor ? "1" : "0.5"}
+                          />
                         );
                       })}
-
-                      {/* Marca da altura do usuário */}
-                      {(() => {
-                        const pct = 97 - (heightCm / 200) * 94;
+                      {/* Linhas verticais (dividir em 10 colunas) */}
+                      {Array.from({ length: 11 }, (_, i) => {
+                        const x = (i / 10) * 100;
                         return (
-                          <div className="absolute left-0 right-0" style={{ top: `${pct}%` }}>
-                            <div className="h-0.5 bg-yellow-400 w-full" />
-                            <span className="absolute left-0 -top-3 text-[9px] text-yellow-300 font-mono font-bold bg-black/60 px-1 rounded">
-                              {heightCm}cm
+                          <line
+                            key={`v${i}`}
+                            x1={`${x}%`} y1="3%"
+                            x2={`${x}%`} y2="97%"
+                            stroke={i === 5 ? "rgba(255,255,255,0.2)" : "rgba(0,255,100,0.12)"}
+                            strokeWidth={i === 5 ? "1" : "0.5"}
+                          />
+                        );
+                      })}
+                      {/* Linha da altura do usuário (amarela) */}
+                      {(() => {
+                        const y = 3 + ((200 - heightCm) / 200) * 94;
+                        return (
+                          <line
+                            x1="0%" y1={`${y}%`}
+                            x2="100%" y2={`${y}%`}
+                            stroke="rgba(255,220,0,0.8)"
+                            strokeWidth="2"
+                            strokeDasharray="8 4"
+                          />
+                        );
+                      })()}
+                    </svg>
+
+                    {/* Labels de cm na direita */}
+                    <div className="absolute right-1 top-[3%] bottom-[3%] w-8 pointer-events-none">
+                      {Array.from({ length: 21 }, (_, i) => {
+                        const cm = 200 - i * 10;
+                        const pct = (i / 20) * 100;
+                        const isMajor = cm % 50 === 0;
+                        if (!isMajor) return null;
+                        return (
+                          <div key={cm} className="absolute right-0" style={{ top: `${pct}%`, transform: "translateY(-50%)" }}>
+                            <span className="text-[9px] text-green-300 font-mono bg-black/50 px-1 rounded">
+                              {cm}
                             </span>
                           </div>
                         );
-                      })()}
+                      })}
                     </div>
 
-                    {/* Linha central vertical (guia de posição) */}
-                    <div className="absolute left-1/2 top-[5%] bottom-[5%] w-px bg-white/15 pointer-events-none" />
+                    {/* Label da altura do usuário */}
+                    {(() => {
+                      const pct = ((200 - heightCm) / 200) * 100;
+                      return (
+                        <div
+                          className="absolute left-1 pointer-events-none"
+                          style={{ top: `${3 + pct * 0.94}%`, transform: "translateY(-100%)" }}
+                        >
+                          <span className="text-[10px] text-yellow-300 font-mono font-bold bg-black/70 px-1.5 py-0.5 rounded">
+                            {heightCm}cm
+                          </span>
+                        </div>
+                      );
+                    })()}
 
                     {/* Instrução */}
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-6 text-center">
