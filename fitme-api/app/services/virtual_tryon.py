@@ -265,6 +265,18 @@ class VirtualTryOn:
         region_w = min(w - x, region_w + padding_x * 2)
         region_h = min(h - y, region_h + padding_y * 2)
 
+        # Verificar se a roupa precisa ser espelhada.
+        # No MediaPipe, landmark 11 = ombro esquerdo, 12 = ombro direito.
+        # Se o ombro esquerdo (11) está à DIREITA na imagem (x maior),
+        # significa que a pessoa está de frente e a imagem não está espelhada.
+        # Imagens de roupa de e-commerce são "vistas de frente" (como num cabide),
+        # então precisam ser espelhadas para alinhar com o corpo na foto.
+        left_shoulder_x = landmarks[11].x
+        right_shoulder_x = landmarks[12].x
+        if left_shoulder_x > right_shoulder_x:
+            # Pessoa de frente (não espelhada) - espelhar a roupa
+            garment_bgra = cv2.flip(garment_bgra, 1)
+
         # Rotacionar roupa se ombros não estão nivelados
         if abs(angle) > 2:
             center = (garment_bgra.shape[1] // 2, garment_bgra.shape[0] // 2)
