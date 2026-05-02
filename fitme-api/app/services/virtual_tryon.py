@@ -150,11 +150,14 @@ class VirtualTryOn:
         x2 = min(w, x2)
         y2 = min(h, y2)
 
-        # Calcular ângulo dos ombros para rotação
+        # Calcular ângulo dos ombros para rotação.
+        # ATENÇÃO: No MediaPipe, landmark 11 = ombro esquerdo do usuário,
+        # que aparece à DIREITA na imagem (coordenadas de câmera, não espelhadas).
+        # Por isso usamos (left - right) para obter o ângulo correto sem inversão.
         angle = math.degrees(
             math.atan2(
-                (right_shoulder.y - left_shoulder.y) * h,
-                (right_shoulder.x - left_shoulder.x) * w,
+                (left_shoulder.y - right_shoulder.y) * h,
+                (left_shoulder.x - right_shoulder.x) * w,
             )
         )
 
@@ -272,10 +275,12 @@ class VirtualTryOn:
         y = max(0, y - padding_y)
         region_h = min(h - y, region_h + padding_y * 2)
 
-        # Rotacionar roupa se ombros não estão nivelados
+        # Rotacionar roupa se ombros não estão nivelados.
+        # O sinal do ângulo já está corrigido em _get_body_region;
+        # aplicamos diretamente (sem negar) para alinhar a roupa à inclinação real.
         if abs(angle) > 2:
             center = (garment_bgra.shape[1] // 2, garment_bgra.shape[0] // 2)
-            matrix = cv2.getRotationMatrix2D(center, -angle, 1.0)
+            matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
             garment_bgra = cv2.warpAffine(
                 garment_bgra,
                 matrix,
