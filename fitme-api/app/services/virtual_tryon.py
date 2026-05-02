@@ -247,11 +247,9 @@ class VirtualTryOn:
 
         landmarks = results.pose_landmarks.landmark
 
-        # Verificar landmarks essenciais
-        essential_indices = [11, 12, 23, 24, 27, 28]
-        for idx in essential_indices:
-            if landmarks[idx].visibility < 0.3:
-                return None
+        # Verificar landmarks mínimos (ombros são obrigatórios, resto é opcional)
+        if landmarks[11].visibility < 0.2 or landmarks[12].visibility < 0.2:
+            return None  # Precisa pelo menos dos ombros
 
         # Remover fundo da roupa
         garment_bgra = self._remove_background(garment_image)

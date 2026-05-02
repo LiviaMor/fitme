@@ -13,6 +13,7 @@ const GARMENT_TYPES = [
   { value: "saia", label: "Saia" },
   { value: "blazer", label: "Blazer" },
   { value: "jaqueta", label: "Jaqueta" },
+  { value: "corpo_inteiro", label: "Corpo Inteiro" },
 ];
 
 export function TryOn() {

@@ -149,9 +149,17 @@ async def tryon_from_url_base64(
     if person_image is None:
         raise HTTPException(status_code=400, detail="Imagem inválida.")
 
-    result_image = await tryon_service.try_on_from_url(
+    # Verificar se a URL da roupa é acessível
+    garment_img = await tryon_service.fetch_garment_image(garment_url)
+    if garment_img is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Não foi possível baixar a imagem da roupa. Verifique a URL: {garment_url}",
+        )
+
+    result_image = await tryon_service.try_on(
         person_image=person_image,
-        garment_url=garment_url,
+        garment_image=garment_img,
         garment_type=garment_type,
         opacity=opacity,
     )
@@ -159,7 +167,7 @@ async def tryon_from_url_base64(
     if result_image is None:
         raise HTTPException(
             status_code=422,
-            detail="Try-on falhou. Corpo não detectado ou URL inválida.",
+            detail="Corpo não detectado na foto. Certifique-se de que pelo menos ombros e tronco estão visíveis.",
         )
 
     _, buffer = cv2.imencode(".png", result_image)

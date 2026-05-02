@@ -285,6 +285,7 @@ export function Scanner360() {
                       {[
                         ["camiseta", "Camiseta"], ["camisa", "Camisa"], ["vestido", "Vestido"],
                         ["calca", "Calça"], ["saia", "Saia"], ["blazer", "Blazer"], ["jaqueta", "Jaqueta"],
+                        ["corpo_inteiro", "Corpo Inteiro"],
                       ].map(([val, label]) => (
                         <option key={val} value={val}>{label}</option>
                       ))}
