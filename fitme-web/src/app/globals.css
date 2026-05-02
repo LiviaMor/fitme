@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+:root {
+  --color-primary: #6C3CE1;
+  --color-primary-light: #8B5CF6;
+  --color-primary-dark: #5B21B6;
+  --color-accent: #F97316;
+  --color-surface: #FAFAFA;
+  --color-surface-dark: #111111;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-bg {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
