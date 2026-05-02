@@ -50,6 +50,12 @@ export function Scanner360() {
   const [tryonResult, setTryonResult] = useState<string | null>(null);
   const [tryonLoading, setTryonLoading] = useState(false);
 
+  // Personal Stylist state
+  const [stylistResult, setStylistResult] = useState<Record<string, unknown> | null>(null);
+  const [stylistLoading, setStylistLoading] = useState(false);
+  const [gender, setGender] = useState("feminino");
+  const [occasion, setOccasion] = useState("casual");
+
   // Abrir câmera
   const openCamera = async () => {
     setError(null);
@@ -185,6 +191,45 @@ export function Scanner360() {
     setProcessing(false);
     setTryonResult(null);
     setGarmentUrl("");
+    setStylistResult(null);
+  };
+
+  // Personal Stylist
+  const doStylist = async () => {
+    if (!result) return;
+    setStylistLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/api/v1/stylist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          height_cm: result.height_cm,
+          shoulder_cm: result.shoulder_width_cm,
+          bust_cm: result.bust_circumference_cm,
+          waist_cm: result.waist_circumference_cm,
+          hip_cm: result.hip_circumference_cm,
+          pants_cm: result.pants_length_cm,
+          shirt_cm: result.shirt_length_cm,
+          armhole_cm: result.armhole_depth_cm,
+          body_type: "não identificado",
+          skin_color: "não identificado",
+          skin_undertone: "não identificado",
+          gender,
+          occasion,
+        }),
+      });
+      if (res.ok) {
+        setStylistResult(await res.json());
+      } else {
+        const err = await res.json();
+        setError(err.detail || "Erro na consultoria.");
+      }
+    } catch {
+      setError("API não disponível para consultoria. Verifique a OPENAI_API_KEY.");
+    } finally {
+      setStylistLoading(false);
+    }
   };
 
   // Try-on: usa a primeira foto (frontal) + URL da roupa
@@ -270,6 +315,103 @@ export function Scanner360() {
             <button onClick={reset} className="mt-4 w-full py-2 border rounded-lg text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2">
               <RotateCcw size={16} /> Refazer
             </button>
+
+            {/* Personal Stylist */}
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <h3 className="font-semibold text-gray-900 mb-4">✨ Personal Stylist com IA</h3>
+              <div className="flex gap-3 mb-4">
+                <select value={gender} onChange={(e) => setGender(e.target.value)}
+                  className="px-3 py-2 border rounded-lg text-sm">
+                  <option value="feminino">Feminino</option>
+                  <option value="masculino">Masculino</option>
+                  <option value="não informado">Não informar</option>
+                </select>
+                <select value={occasion} onChange={(e) => setOccasion(e.target.value)}
+                  className="px-3 py-2 border rounded-lg text-sm">
+                  <option value="casual">Casual</option>
+                  <option value="trabalho">Trabalho</option>
+                  <option value="festa">Festa</option>
+                  <option value="esporte">Esporte</option>
+                  <option value="praia">Praia</option>
+                </select>
+                <button onClick={doStylist} disabled={stylistLoading}
+                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-500 text-white font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 transition flex items-center gap-2">
+                  {stylistLoading ? <><Loader2 size={16} className="animate-spin" /> Consultando...</> : "✨ Consultar Stylist"}
+                </button>
+              </div>
+
+              {stylistResult && (
+                <div className="space-y-4">
+                  <div className="bg-purple-50 rounded-xl p-4">
+                    <p className="text-sm text-purple-900 font-medium">{(stylistResult as Record<string, string>).perfil_resumo}</p>
+                    <p className="text-sm text-purple-700 mt-2">{(stylistResult as Record<string, string>).biotipo_analise}</p>
+                  </div>
+
+                  {/* Cores */}
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">🎨 Cores recomendadas</h4>
+                      <div className="space-y-1">
+                        {((stylistResult as Record<string, Array<Record<string, string>>>).cores_recomendadas || []).map((c, i) => (
+                          <div key={i} className="flex items-center gap-2 text-sm">
+                            <div className="w-5 h-5 rounded border" style={{ backgroundColor: c.hex || "#ccc" }} />
+                            <span className="font-medium">{c.cor}</span>
+                            <span className="text-gray-500 text-xs">— {c.motivo}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">🚫 Cores a evitar</h4>
+                      <div className="space-y-1">
+                        {((stylistResult as Record<string, Array<Record<string, string>>>).cores_evitar || []).map((c, i) => (
+                          <div key={i} className="text-sm text-gray-600">
+                            <span className="font-medium">{c.cor}</span> — {c.motivo}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Peças */}
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">👔 Peças recomendadas</h4>
+                    <div className="grid sm:grid-cols-2 gap-2">
+                      {((stylistResult as Record<string, Array<Record<string, string>>>).pecas_recomendadas || []).map((p, i) => (
+                        <div key={i} className="bg-white border rounded-lg p-3">
+                          <p className="font-medium text-sm">{p.tipo} — Tam. {p.tamanho_sugerido}</p>
+                          <p className="text-xs text-gray-600">{p.descricao}</p>
+                          {p.medida_referencia && <p className="text-xs text-purple-600 mt-1">📏 {p.medida_referencia}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Look completo */}
+                  {(stylistResult as Record<string, Record<string, string>>).look_completo && (
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4">
+                      <h4 className="font-medium text-gray-900 mb-2">👗 Look Completo — {(stylistResult as Record<string, Record<string, string>>).look_completo.ocasiao}</h4>
+                      <p className="text-sm text-gray-700">{(stylistResult as Record<string, Record<string, string>>).look_completo.descricao}</p>
+                      {(stylistResult as Record<string, Record<string, string>>).look_completo.dica_extra && (
+                        <p className="text-xs text-purple-600 mt-2">💡 {(stylistResult as Record<string, Record<string, string>>).look_completo.dica_extra}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Dicas */}
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">💡 Dicas de Styling</h4>
+                    <ul className="space-y-1">
+                      {((stylistResult as Record<string, string[]>).dicas_gerais || []).map((d, i) => (
+                        <li key={i} className="text-sm text-gray-600 flex gap-2">
+                          <span className="text-purple-500">•</span> {d}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Try-On após medidas */}
             <div className="mt-8 pt-6 border-t border-gray-200">
