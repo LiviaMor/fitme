@@ -253,6 +253,12 @@ class VirtualTryOn:
         # Remover fundo da roupa
         garment_bgra = self._remove_background(garment_image)
 
+        # Espelhar a roupa horizontalmente.
+        # Imagens de e-commerce mostram a roupa "de frente" (como num cabide).
+        # Quando sobreposta na foto da pessoa, fica invertida (frente nas costas).
+        # O flip corrige isso.
+        garment_bgra = cv2.flip(garment_bgra, 1)
+
         # Calcular região do corpo
         x, y, region_w, region_h, angle = self._get_body_region(
             landmarks, h, w, garment_type
