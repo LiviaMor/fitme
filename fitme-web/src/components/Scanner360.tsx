@@ -423,29 +423,50 @@ export function Scanner360() {
                       </svg>
                     </div>
 
-                    {/* Estadiômetro / Régua lateral */}
-                    <div className="absolute left-1 top-[5%] bottom-[5%] w-6 pointer-events-none flex flex-col justify-between">
-                      {[200, 180, 160, 140, 120, 100, 80, 60, 40, 20, 0].map((cm) => (
-                        <div key={cm} className="flex items-center gap-0.5">
-                          <div className={`h-px ${cm % 50 === 0 ? "w-4 bg-green-400" : "w-2 bg-green-400/60"}`} />
-                          {cm % 50 === 0 && (
-                            <span className="text-[8px] text-green-400 font-mono">{cm}</span>
-                          )}
-                        </div>
-                      ))}
+                    {/* Estadiômetro / Régua lateral direita */}
+                    <div className="absolute right-1 top-[5%] bottom-[5%] w-8 pointer-events-none">
+                      {/* Régua: 0cm na base (pés), cresce para cima */}
+                      {[0, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200].map((cm) => {
+                        // Posição: 0cm = bottom (95%), 200cm = top (5%)
+                        const pct = 95 - (cm / 200) * 90;
+                        const isMajor = cm % 50 === 0;
+                        return (
+                          <div
+                            key={cm}
+                            className="absolute right-0 flex items-center"
+                            style={{ top: `${pct}%` }}
+                          >
+                            {isMajor && (
+                              <span className="text-[9px] text-green-400 font-mono mr-1">{cm}</span>
+                            )}
+                            <div className={`h-px ${isMajor ? "w-5 bg-green-400" : "w-3 bg-green-400/50"}`} />
+                          </div>
+                        );
+                      })}
                     </div>
 
-                    {/* Linha de altura do usuário */}
-                    <div
-                      className="absolute left-0 right-0 h-px bg-yellow-400/70 pointer-events-none"
-                      style={{ top: `${5 + ((200 - heightCm) / 200) * 90}%` }}
-                    />
-                    <div
-                      className="absolute left-7 text-[9px] text-yellow-400 font-mono pointer-events-none"
-                      style={{ top: `${3 + ((200 - heightCm) / 200) * 90}%` }}
-                    >
-                      {heightCm}cm
-                    </div>
+                    {/* Linha de altura do usuário (amarela) */}
+                    {(() => {
+                      const heightPct = 95 - (heightCm / 200) * 90;
+                      return (
+                        <>
+                          <div
+                            className="absolute left-0 right-0 pointer-events-none"
+                            style={{ top: `${heightPct}%` }}
+                          >
+                            <div className="h-px bg-yellow-400 w-full" />
+                          </div>
+                          <div
+                            className="absolute left-2 pointer-events-none"
+                            style={{ top: `${heightPct - 2}%` }}
+                          >
+                            <span className="text-[10px] text-yellow-400 font-mono font-bold bg-black/40 px-1 rounded">
+                              ← {heightCm}cm
+                            </span>
+                          </div>
+                        </>
+                      );
+                    })()}
 
                     {/* Instrução */}
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-6 text-center">
