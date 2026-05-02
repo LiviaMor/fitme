@@ -54,16 +54,32 @@ export function Scanner360() {
   const openCamera = async () => {
     setError(null);
     try {
+      // Não forçar resolução - usar a natural da câmera
+      // Isso evita zoom/crop que corta o corpo
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1080 }, height: { ideal: 1920 } },
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: { ideal: "environment" },
+        },
       });
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
       setCameraOn(true);
-    } catch (e: unknown) {
-      setError(`Câmera: ${e instanceof Error ? e.message : "não disponível"}`);
+    } catch {
+      // Fallback: qualquer câmera sem constraints
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+        setCameraOn(true);
+      } catch (e: unknown) {
+        setError(`Câmera: ${e instanceof Error ? e.message : "não disponível"}`);
+      }
     }
   };
 
@@ -376,22 +392,22 @@ export function Scanner360() {
             </div>
 
             {/* Camera view */}
-            <div className="max-w-sm mx-auto">
-              {/* Video container - aspect ratio 9:16 (celular) */}
-              <div className="relative bg-black rounded-2xl overflow-hidden border-2 border-purple-300" style={{ aspectRatio: "9/16" }}>
+            <div className="max-w-lg mx-auto">
+              {/* Video container - adapta à proporção da câmera */}
+              <div className="relative bg-black rounded-2xl overflow-hidden border-2 border-purple-300" style={{ minHeight: 400 }}>
                 {/* Video sempre no DOM */}
                 <video
                   ref={videoRef}
                   autoPlay
                   playsInline
                   muted
-                  className={`absolute inset-0 w-full h-full object-cover ${cameraOn ? "opacity-100" : "opacity-0"}`}
-                  style={{ transform: "scaleX(-1)" }}
+                  className={`w-full rounded-2xl bg-black ${cameraOn ? "opacity-100" : "opacity-0"}`}
+                  style={{ transform: "scaleX(-1)", maxHeight: "70vh" }}
                 />
 
                 {/* Placeholder quando câmera está off */}
                 {!cameraOn && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100">
+                  <div className="flex flex-col items-center justify-center py-20 bg-gray-100 rounded-2xl">
                     <svg viewBox="0 0 100 100" className="w-20 h-32 opacity-20 mb-4" fill="gray" stroke="gray" strokeWidth="0.3">
                       <path d="M50,5 C47,5 43,8 41,12 C39,16 39,20 41,23 C43,25 45,26 47,27 L47,31 C43,32 38,35 36,39 C34,43 33,47 33,52 L33,68 C33,70 34,72 36,72 L36,92 C36,94 38,96 40,96 C42,96 43,94 43,92 L43,72 L57,72 L57,92 C57,94 58,96 60,96 C62,96 64,94 64,92 L64,72 C66,72 67,70 67,68 L67,52 C67,47 66,43 64,39 C62,35 57,32 53,31 L53,27 C55,26 57,25 59,23 C61,20 61,16 59,12 C57,8 53,5 50,5 Z" />
                     </svg>
