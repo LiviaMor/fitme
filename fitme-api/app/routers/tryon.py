@@ -15,6 +15,7 @@ from fastapi.responses import Response
 from typing import Optional
 
 from app.services.virtual_tryon import VirtualTryOn
+from app.services.image_utils import fix_orientation
 
 router = APIRouter()
 tryon_service = VirtualTryOn()
@@ -46,8 +47,7 @@ async def tryon_from_url(
         raise HTTPException(status_code=400, detail="Use JPEG, PNG ou WebP.")
 
     contents = await photo.read()
-    nparr = np.frombuffer(contents, np.uint8)
-    person_image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    person_image = fix_orientation(contents)
 
     if person_image is None:
         raise HTTPException(status_code=400, detail="Imagem do cliente inválida.")
@@ -95,18 +95,16 @@ async def tryon_from_upload(
     if garment_photo.content_type not in ["image/jpeg", "image/png", "image/webp"]:
         raise HTTPException(status_code=400, detail="Roupa: use JPEG, PNG ou WebP.")
 
-    # Ler imagem do cliente
+    # Ler imagem do cliente (com correção EXIF)
     person_bytes = await photo.read()
-    person_arr = np.frombuffer(person_bytes, np.uint8)
-    person_image = cv2.imdecode(person_arr, cv2.IMREAD_COLOR)
+    person_image = fix_orientation(person_bytes)
 
     if person_image is None:
         raise HTTPException(status_code=400, detail="Imagem do cliente inválida.")
 
-    # Ler imagem da roupa
+    # Ler imagem da roupa (com correção EXIF)
     garment_bytes = await garment_photo.read()
-    garment_arr = np.frombuffer(garment_bytes, np.uint8)
-    garment_image = cv2.imdecode(garment_arr, cv2.IMREAD_UNCHANGED)
+    garment_image = fix_orientation(garment_bytes)
 
     if garment_image is None:
         raise HTTPException(status_code=400, detail="Imagem da roupa inválida.")
@@ -146,8 +144,7 @@ async def tryon_from_url_base64(
         raise HTTPException(status_code=400, detail="Use JPEG, PNG ou WebP.")
 
     contents = await photo.read()
-    nparr = np.frombuffer(contents, np.uint8)
-    person_image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    person_image = fix_orientation(contents)
 
     if person_image is None:
         raise HTTPException(status_code=400, detail="Imagem inválida.")

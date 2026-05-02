@@ -20,6 +20,7 @@ from app.services.stadiometer import (
     WelmyModel,
     WELMY_MODELS,
 )
+from app.services.image_utils import fix_orientation
 
 router = APIRouter()
 
@@ -85,8 +86,7 @@ async def measure_height(
         )
 
     contents = await photo.read()
-    nparr = np.frombuffer(contents, np.uint8)
-    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    image = fix_orientation(contents)
 
     if image is None:
         raise HTTPException(status_code=400, detail="Não foi possível ler a imagem.")

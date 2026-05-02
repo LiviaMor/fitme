@@ -14,6 +14,7 @@ import cv2
 import numpy as np
 
 from app.services.scanner_360_multi import MultiFrameScanner360
+from app.services.image_utils import fix_orientation
 
 router = APIRouter()
 scanner = MultiFrameScanner360()
@@ -98,8 +99,7 @@ async def scan_360_multi(
             )
 
         contents = await frame.read()
-        nparr = np.frombuffer(contents, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        img = fix_orientation(contents)
 
         if img is None:
             raise HTTPException(

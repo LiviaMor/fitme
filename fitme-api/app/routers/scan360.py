@@ -13,6 +13,7 @@ import cv2
 import numpy as np
 
 from app.services.body_scanner_360 import BodyScanner360
+from app.services.image_utils import fix_orientation
 
 router = APIRouter()
 scanner_360 = BodyScanner360()
@@ -78,12 +79,10 @@ async def scan_360(
 
     # Ler imagens
     front_bytes = await front_photo.read()
-    front_arr = np.frombuffer(front_bytes, np.uint8)
-    front_image = cv2.imdecode(front_arr, cv2.IMREAD_COLOR)
+    front_image = fix_orientation(front_bytes)
 
     side_bytes = await side_photo.read()
-    side_arr = np.frombuffer(side_bytes, np.uint8)
-    side_image = cv2.imdecode(side_arr, cv2.IMREAD_COLOR)
+    side_image = fix_orientation(side_bytes)
 
     if front_image is None:
         raise HTTPException(status_code=400, detail="Foto frontal inválida.")
