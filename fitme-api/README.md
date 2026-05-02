@@ -1,154 +1,144 @@
 # 👗 FITME - Provador Virtual com IA
 
-API e interface para provador virtual inteligente que usa visão computacional e IA generativa para análise corporal, tom de pele e consultoria de estilo.
+API para provador virtual inteligente que usa visão computacional e IA generativa para escaneamento corporal 360°, análise de tom de pele, virtual try-on e consultoria de estilo.
 
 ## 🏗️ Arquitetura
 
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│   Streamlit UI  │────▶│   FastAPI (API)   │────▶│  OpenAI GPT-4o  │
-│   (Front-end)   │     │                  │     │  (Consultoria)  │
+│  Next.js (Web)  │────▶│   FastAPI (API)   │────▶│  OpenAI GPT-4o  │
+│  Vercel Deploy  │     │                  │     │  (Consultoria)  │
 └─────────────────┘     └──────────────────┘     └─────────────────┘
                               │
-                    ┌─────────┴─────────┐
-                    │                   │
-              ┌─────▼─────┐     ┌──────▼──────┐
-              │ MediaPipe  │     │   OpenCV    │
-              │ (Medidas)  │     │ (Tom Pele)  │
-              └────────────┘     └─────────────┘
+              ┌───────────────┼───────────────┐
+              │               │               │
+        ┌─────▼─────┐  ┌─────▼─────┐  ┌──────▼──────┐
+        │ MediaPipe  │  │  OpenCV   │  │ Try-On      │
+        │ Pose 33pts │  │ Skin Tone │  │ Overlay     │
+        └────────────┘  └───────────┘  └─────────────┘
 ```
 
 ## 🚀 Quick Start
 
-### 1. Clonar e configurar
-
 ```bash
-git clone <repo>
-cd fitme-api
+git clone https://github.com/LiviaMor/fitme.git
+cd fitme/fitme-api
 cp .env.example .env
 # Editar .env com sua OPENAI_API_KEY
-```
-
-### 2. Instalar dependências
-
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate   # Windows
 pip install -r requirements.txt
-```
-
-### 3. Rodar a API
-
-```bash
 uvicorn app.main:app --reload --port 8000
 ```
 
-### 4. Rodar o Streamlit (outra aba)
-
+Front-end:
 ```bash
-cd streamlit_app
-streamlit run app.py
-```
-
-### 5. Docker (alternativa)
-
-```bash
-docker-compose up --build
+cd fitme/fitme-web
+npm install
+npm run dev
 ```
 
 ## 📡 Endpoints da API
 
-### Health Check
+### Scanner 360° (2 fotos: frente + lado)
 ```
-GET /health
+POST /api/v1/scan360
+- front_photo: foto frontal
+- side_photo: foto de perfil (lado)
+- height_cm: altura real (obrigatória)
 ```
 
-### Análise Corporal
+Retorna circunferências REAIS (busto, cintura, quadril) calculadas
+pela fórmula da elipse de Ramanujan usando largura (frente) + profundidade (lado).
+
+### Análise Corporal (1 foto)
 ```
 POST /api/v1/analyze/body
-Content-Type: multipart/form-data
-
-- photo: arquivo de imagem (JPEG/PNG/WebP)
-- height_cm: altura real em cm (opcional)
+- photo: foto frontal
+- height_cm: altura (opcional)
 ```
 
-**Resposta:**
-```json
-{
-  "measurements": {
-    "shoulder_width_cm": 42.5,
-    "bust_cm": 97.8,
-    "waist_cm": 78.4,
-    "hip_cm": 96.2,
-    "inseam_cm": 78.0,
-    "pants_length_cm": 81.9,
-    "height_cm": 175.0
-  },
-  "skin_analysis": {
-    "hex_color": "#c4956a",
-    "undertone": "quente",
-    "color_name": "Pele média"
-  },
-  "body_type": "retangulo",
-  "confidence_score": 0.85,
-  "landmarks_detected": 28
-}
+### Virtual Try-On
+```
+POST /api/v1/tryon/url
+- photo: foto do cliente
+- garment_url: URL da imagem da roupa no e-commerce
+- garment_type: camiseta|camisa|vestido|calca|saia|blazer|jaqueta
 ```
 
-### Análise de Caimento (com LLM)
+### Consultoria de Estilo (com LLM)
 ```
 POST /api/v1/analyze/fit
-Content-Type: multipart/form-data
-
-- photo: arquivo de imagem
-- garment_json: JSON da peça de roupa
-- height_cm: altura real em cm (opcional)
+- photo: foto do cliente
+- garment_json: JSON com dados da peça
 ```
 
-### Catálogo de Peças
+### Estadiômetro Digital (padrão Welmy)
+```
+POST /api/v1/stadiometer/measure
+- photo: foto corpo inteiro
+- model: W200/5 | W200/5A | W110H | Pediátrico
+```
+
+### Catálogo
 ```
 GET /api/v1/garments
-GET /api/v1/garments?category=vestido&size=M
-GET /api/v1/garments/{garment_id}
+GET /api/v1/garments/{id}
 ```
 
-## 🧠 Como Funciona
+## 📐 Scanner 360° - Como Funciona
 
-1. **Input**: Usuário tira foto de corpo inteiro + escolhe peça
-2. **MediaPipe**: Detecta 33 landmarks corporais e calcula medidas
-3. **OpenCV**: Extrai região da pele e classifica subtom (frio/quente/neutro)
-4. **LLM (GPT-4o)**: Recebe medidas + peça e gera consultoria de estilo
-5. **Output**: Notas de caimento, cor e recomendação de tamanho
+```
+┌──────────────┐    ┌──────────────┐
+│  FOTO FRENTE │    │  FOTO LADO   │
+│              │    │              │
+│   ←──W──→   │    │   ←──D──→   │
+│  (largura)   │    │ (profundid.) │
+└──────────────┘    └──────────────┘
+        │                   │
+        └─────────┬─────────┘
+                  │
+         Fórmula da Elipse
+         C ≈ π[3(a+b) - √((3a+b)(a+3b))]
+                  │
+                  ▼
+        ┌──────────────────┐
+        │ CIRCUNFERÊNCIAS  │
+        │ Busto: 92cm      │
+        │ Cintura: 76cm    │
+        │ Quadril: 98cm    │
+        └──────────────────┘
+```
 
-## 🎯 Medidas Extraídas
+**Instruções para o usuário:**
+1. Foto frontal: de frente, braços levemente afastados do corpo
+2. Foto lateral: virado de lado (perfil), braços à frente
+3. Ambas: corpo inteiro, fundo claro, roupa justa
+4. Informar altura real para calibração
 
-| Medida | Método |
-|--------|--------|
-| Ombros | Distância entre landmarks 11-12 |
-| Busto | Estimativa proporcional |
-| Cintura | Estimativa proporcional |
-| Quadril | Distância entre landmarks 23-24 |
-| Gancho | Distância quadril-tornozelo |
-| Calça | Comprimento interno da perna |
+## 🎯 Fórmulas de Modelagem
 
-## 📦 Stack Tecnológica
+| Medida | Fórmula |
+|--------|---------|
+| Altura do gancho | altura × 16 / 100 |
+| Comprimento calça | altura × 61 / 100 |
+| Comprimento camisa | altura × 45 / 100 |
+| Altura da cava | tórax / 4.4 |
+| Circunferência | Elipse de Ramanujan (largura + profundidade) |
 
-- **Linguagem**: Python 3.11
-- **API**: FastAPI + Pydantic
-- **Visão Computacional**: MediaPipe + OpenCV
+## 📦 Stack
+
+- **API**: Python 3.11 + FastAPI + Pydantic
+- **Visão Computacional**: MediaPipe Pose (33 landmarks) + OpenCV
 - **IA Generativa**: LangChain + OpenAI GPT-4o
-- **Front-end**: Streamlit
-- **Deploy**: Docker / AWS App Runner
+- **Front-end**: Next.js 16 + Tailwind CSS + TypeScript
+- **Deploy**: Vercel (web) + Docker/AWS (API)
 
 ## 🔧 Variáveis de Ambiente
 
 | Variável | Descrição | Obrigatória |
 |----------|-----------|-------------|
-| OPENAI_API_KEY | Chave da API OpenAI | Sim |
+| OPENAI_API_KEY | Chave da API OpenAI | Só para consultoria |
 | AWS_ACCESS_KEY_ID | AWS Access Key | Não |
 | AWS_SECRET_ACCESS_KEY | AWS Secret Key | Não |
-| S3_BUCKET_NAME | Bucket para fotos | Não |
 
 ## 📄 Licença
 
